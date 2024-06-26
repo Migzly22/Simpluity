@@ -13,5 +13,9 @@
             "email": "rolly.migrino02@gmail.com"
         }
     ],
-    "require": {}
+    "minimum-stability": "stable",
+    "require": {
+        "php": ">=7.4",
+        "phpmailer/phpmailer": ">=6.9"
+    }
 }

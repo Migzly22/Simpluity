@@ -1,5 +1,5 @@
 <?php
-namespace Simpluity\Simpluity\Utils;
+namespace Simpluity\Simpluity;
 
 class BaseController {
 
