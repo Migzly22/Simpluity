@@ -1,0 +1,17 @@
+{
+    "name": "simpluity/simpluity",
+    "description": "Simple PHP function for Mysql and Gmail Sending",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Simpluity\\Simpluity\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Rolly Migriño",
+            "email": "rolly.migrino02@gmail.com"
+        }
+    ],
+    "require": {}
+}
