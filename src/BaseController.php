@@ -11,16 +11,16 @@ class BaseController {
     public $page_limit = 20;
 
 
-    public function __construct($model, $pdo,  $pagination = false, $paranoid = false) {
+    public function __construct($model, $pdo, $paranoid = false, $pagination = false) {
         $this->model = $model;
         $this->pdo = $pdo;
         $this->pagination = $pagination;
         $this->paranoid = $paranoid;
     }
 
-    // jsonData = json
+    // data = associative array
     // columns = array
-    // condition = string
+    // condition = string [string, [datas]] condition = ?, [1]
     // associates = array [tablename, INNER || LEFT || RIGHT, condition, columns ]
     // order = array
 
@@ -29,13 +29,17 @@ class BaseController {
             $currentpage = $this->page_limit * ($this->page_number - 1);
             $limit = $this->page_limit;
 
-            $where = $condition ? "AND $condition": "";
+            $where = $condition ? "AND ".$condition[0]: "";
+
+
             $orderby = $order ? "ORDER BY ".implode(",", $order) : "";
             $pages = $this->pagination ? "LIMIT $limit OFFSET $currentpage" : "";
+            $deletedAt = $this->paranoid ? "WHERE deletedAt IS NULL " : ($where !== "" ? "WHERE " : "");
 
-            $sqlquery = "SELECT * FROM ".$this->model." WHERE deletedAt IS NULL $where $orderby $pages";
+
+            $sqlquery = "SELECT * FROM ".$this->model." $deletedAt $where $orderby $pages";
             $stmt = $this->pdo->prepare($sqlquery);
-            $stmt->execute();
+            $stmt->execute($condition[1]);
 
             return $stmt->fetchAll();
         } catch (\Throwable $th) {
@@ -47,7 +51,7 @@ class BaseController {
             $currentpage = $this->page_limit * ($this->page_number - 1);
             $limit = $this->page_limit;
 
-            $where = $condition ? "AND $condition": "";
+            $where = $condition ? "AND ".$condition[0]: "";
             $orderby = $order ? "ORDER BY ".implode(",", $order) : "";
             $pages = $this->pagination ? "LIMIT $limit OFFSET $currentpage" : "";
 
@@ -72,21 +76,22 @@ class BaseController {
             $select = $columns ? "model.* ,".implode(",", $columns) : "model.*";
 
             $associateTable = $associates ? $this->model." model ".implode(" ", $assocTableData): $this->model." model" ;
+            $deletedAt = $this->paranoid ? "WHERE model.deletedAt IS NULL " : ($where !== "" ? "WHERE " : "");
 
-            $sqlquery = "SELECT $select FROM $associateTable WHERE model.deletedAt IS NULL $where $orderby $pages";
+
+            $sqlquery = "SELECT $select FROM $associateTable $deletedAt $where $orderby $pages";
             $stmt = $this->pdo->prepare($sqlquery);
-            $stmt->execute();
+            $stmt->execute($condition[1]);
 
             return $stmt->fetchAll();
         } catch (\Throwable $th) {
             return $th->getMessage();//getTraceAsString()
         }
     }
-    public function POST( $jsonData) {
+    public function POST( $data, $password = null) {
         try {
-            $data = $this->jsonTransform($jsonData);
-            if(isset($data['password'])){
-                $data['password'] = $this->encryption($data['password']);
+            if(isset($password)){
+                $data[$password] = $this->encryption($data[$password]);
             }
             $columns = array_keys($data);
             $values = array_values($data);
@@ -103,21 +108,21 @@ class BaseController {
             return $th->getMessage();//getTraceAsString()
         }
     }
-    public function UPDATE( $jsonData, $condition = null) {
+    public function UPDATE( $data, $condition = null) {
         try {
-            $data = $this->jsonTransform($jsonData);
-            $where = $condition ? "WHERE $condition": "";
+            $where = $condition ? "WHERE ".$condition[0]: "";
             $setvalue = [];
             $insert_values = [];
             foreach ($data as $key => $value) {
                 $setvalue[] = "$key = ?";
                 $insert_values[] = $value;
             }
+            $values = array_merge($insert_values, $condition[1]);
 
             $sqlquery = "UPDATE ".$this->model." SET ".implode(",",$setvalue)." $where";
             $stmt = $this->pdo->prepare($sqlquery);
 
-            return $stmt->execute($insert_values);
+            return $stmt->execute($values);
 
         } catch (\Throwable $th) {
             return $th->getMessage();//getTraceAsString()
@@ -125,7 +130,7 @@ class BaseController {
     }
     public function DELETE( $condition = null) {
         try {
-            $where = $condition ? "WHERE $condition": "";
+            $where = $condition ? "WHERE ".$condition[0]: "";
             $sqlquery = "";
             if($this->paranoid){
                 //this will create a new column deletedAt if it doesnt exist
@@ -135,22 +140,24 @@ class BaseController {
                 $sqlquery = "DELETE FROM ".$this->model." $where";
             }
             $stmt = $this->pdo->prepare($sqlquery);
-            return $stmt->execute();
+            return $stmt->execute($condition[1]);
         } catch (\Throwable $th) {
             return $th->getMessage();//getTraceAsString()
         }
     }
-    public function AUTH($jsonData, $condition = null,$columns = null) {
+    public function AUTH($data, $password,$columns = null) {
         try {
-            $data = $this->jsonTransform($jsonData);
-            if(isset($data['password'])){
-                $data['password'] = $this->encryption($data['password']);
+            if(isset($password)){
+                $data[$password] = $this->encryption($data[$password]);
             }
             $select = $columns ? implode(",", $columns) : "*";
-            
-            $sqlquery = "SELECT $select FROM ".$this->model." WHERE deletedAt IS NULL AND email = ? AND password = ?";
+
+            $deletedAt = $this->paranoid ? "WHERE deletedAt IS NULL " : "WHERE ";
+            $sqlquery = "SELECT $select FROM ".$this->model." $deletedAt AND email = ? AND password = ?";
+   
+
             $stmt = $this->pdo->prepare($sqlquery);
-            $stmt->execute([$data["email"],$data['password']]);
+            $stmt->execute([$data["email"],$data[$password]]);
 
             return $stmt->fetchAll();
         } catch (\Throwable $th) {
@@ -192,14 +199,6 @@ class BaseController {
             $this->pdo->rollBack();
             echo "Error: " . $e->getMessage();
         }
-    }
-    public function jsonTransform($jsonData){
-        try {
-            return json_decode($jsonData, true);
-        } catch (\Throwable $th) {
-            return $th->getMessage();
-        }
-        
     }
     public function encryption($password) {
         try {
