@@ -1,6 +1,6 @@
 <?php
 
-require './vendor/autoload.php';
+require '../vendor/autoload.php';
 
 
 
@@ -20,10 +20,13 @@ $pdo = new PDO(DATABASEDNS, DATABASE_USERNAME, DATABASE_PASSWORD, $options);
 
 
 
-use Simpluity\Simpluity\BaseController;
+// use Simpluity\Simpluity\BaseController;
 
-$controller = new BaseController("testing", $pdo, true);
-$data =  $controller->GET();
-print_r($data);
+// $controller = new BaseController("testing", $pdo, true);
+// $data =  $controller->GET();
+// print_r($data);
 
 
+use Simpluity\Simpluity\BasePrint;
+$print = new BasePrint();
+$printting = $print->print(__DIR__ .'/index.html', "portrait", ["{{CHANGE}}"=>"RTOLLY"]);
