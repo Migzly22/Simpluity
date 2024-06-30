@@ -29,17 +29,73 @@ class BaseController {
             $currentpage = $this->page_limit * ($this->page_number - 1);
             $limit = $this->page_limit;
 
-            $where = $condition ? "AND ".$condition[0]: "";
-
-
             $orderby = $order ? "ORDER BY ".implode(",", $order) : "";
             $pages = $this->pagination ? "LIMIT $limit OFFSET $currentpage" : "";
-            $deletedAt = $this->paranoid ? "WHERE deletedAt IS NULL " : ($where !== "" ? "WHERE " : "");
-
+            $deletedAt = $this->paranoid ? "WHERE deletedAt IS NULL " : ($condition ? "WHERE " : "");
+            $where = $condition ? $deletedAt.$condition[0]: $deletedAt;
 
             $sqlquery = "SELECT * FROM ".$this->model." $deletedAt $where $orderby $pages";
             $stmt = $this->pdo->prepare($sqlquery);
-            $stmt->execute($condition[1]);
+   
+            if($condition){
+                if($condition[1] == null){
+                    $stmt->execute();
+                }else{
+                    $stmt->execute($condition[1]);
+                }
+            }else{
+                $stmt->execute();
+            }
+  
+
+            return $stmt->fetchAll();
+        } catch (\Throwable $th) {
+            return $th->getMessage();//getTraceAsString()
+        }
+    }
+    public function COUNT( $associates = null, $condition = null, $order = null) {
+        try {
+            $currentpage = $this->page_limit * ($this->page_number - 1);
+            $limit = $this->page_limit;
+
+            $orderby = $order ? "ORDER BY ".implode(",", $order) : "";
+            $pages = $this->pagination ? "LIMIT $limit OFFSET $currentpage" : "";
+
+            $columns = $associates ? array_map( function($value){
+                $targettable = $value[0];
+                if (!in_array(3, $value)) {
+                    // Add a new element with the key 3 and the value ["*"]
+                    $value[3] = ["*"];
+                }
+
+                $columnlist = array_map( function($value) use ($targettable){
+                    return "$targettable.$value";
+                } , $value[3]);
+                return implode(" ,", $columnlist);
+            } , $associates): "";
+
+            $assocTableData = $associates ? array_map( function($value){
+                $typeofJoin = $value[1];
+                $targettable = $value[0];
+                $condition = $value[2];
+                return "$typeofJoin JOIN $targettable $targettable ON $condition";
+            } , $associates): "";
+
+            $select = $columns ? "model.* , COUNT(model.createdAt) as Count, ".implode(",", $columns) : "model.*, COUNT(model.createdAt) as Count";
+
+            $associateTable = $associates ? $this->model." model ".implode(" ", $assocTableData): $this->model." model" ;
+            $deletedAt = $this->paranoid ? "WHERE model.deletedAt IS NULL " : ($condition ? "WHERE " : "");
+            $where = $condition ? $deletedAt.$condition[0]: $deletedAt;
+
+            $sqlquery = "SELECT $select FROM $associateTable $where $orderby $pages";
+
+            $stmt = $this->pdo->prepare($sqlquery);
+
+            if($condition == null){
+                $stmt->execute();
+            }else{
+                $stmt->execute($condition[1]);
+            }
 
             return $stmt->fetchAll();
         } catch (\Throwable $th) {
@@ -51,15 +107,16 @@ class BaseController {
             $currentpage = $this->page_limit * ($this->page_number - 1);
             $limit = $this->page_limit;
 
-            $where = $condition ? "AND ".$condition[0]: "";
             $orderby = $order ? "ORDER BY ".implode(",", $order) : "";
             $pages = $this->pagination ? "LIMIT $limit OFFSET $currentpage" : "";
 
             $columns = $associates ? array_map( function($value){
                 $targettable = $value[0];
-                if (isset($value[3])) {
+                if (!in_array(3, $value)) {
+                    // Add a new element with the key 3 and the value ["*"]
                     $value[3] = ["*"];
                 }
+
                 $columnlist = array_map( function($value) use ($targettable){
                     return "$targettable.$value";
                 } , $value[3]);
@@ -76,12 +133,19 @@ class BaseController {
             $select = $columns ? "model.* ,".implode(",", $columns) : "model.*";
 
             $associateTable = $associates ? $this->model." model ".implode(" ", $assocTableData): $this->model." model" ;
-            $deletedAt = $this->paranoid ? "WHERE model.deletedAt IS NULL " : ($where !== "" ? "WHERE " : "");
+            $deletedAt = $this->paranoid ? "WHERE model.deletedAt IS NULL " : ($condition ? "WHERE " : "");
+            $where = $condition ? $deletedAt.$condition[0]: $deletedAt;
 
 
-            $sqlquery = "SELECT $select FROM $associateTable $deletedAt $where $orderby $pages";
+            $sqlquery = "SELECT $select FROM $associateTable $where $orderby $pages";
+
             $stmt = $this->pdo->prepare($sqlquery);
-            $stmt->execute($condition[1]);
+
+            if($condition[1] == null){
+                $stmt->execute();
+            }else{
+                $stmt->execute($condition[1]);
+            }
 
             return $stmt->fetchAll();
         } catch (\Throwable $th) {
