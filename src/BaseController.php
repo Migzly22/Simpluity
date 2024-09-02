@@ -216,8 +216,8 @@ class BaseController {
             }
             $select = $columns ? implode(",", $columns) : "*";
 
-            $deletedAt = $this->paranoid ? "WHERE deletedAt IS NULL " : "WHERE ";
-            $sqlquery = "SELECT $select FROM ".$this->model." $deletedAt AND email = ? AND password = ?";
+            $deletedAt = $this->paranoid ? "WHERE deletedAt IS NULL AND " : "WHERE ";
+            $sqlquery = "SELECT $select FROM ".$this->model." $deletedAt email = ? AND password = ?";
    
 
             $stmt = $this->pdo->prepare($sqlquery);

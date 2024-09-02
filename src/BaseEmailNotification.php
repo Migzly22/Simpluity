@@ -7,7 +7,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\SMTP;
 use PHPMailer\PHPMailer\Exception;
 
-class BaseEmailNotifications {
+class BaseEmailNotification {
 
     public $email;
     public $password;
