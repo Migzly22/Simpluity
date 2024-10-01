@@ -8,7 +8,7 @@ class SimpleSemaphore {
     public function __construct($API_KEY) {
         $this->API_KEY = $API_KEY;
     }
-    public function sendText($number,$body, $sshDisable = false, $senderName = 'SEMAPHORE') {
+    public function sendText($number,$body, $sshDisable = false, $senderName = 'SEMAPHORE', $debug = false) {
         try {
             $ch = curl_init();
             $parameters = array(
@@ -46,16 +46,18 @@ class SimpleSemaphore {
             }
         
             curl_close($ch);
-        
-            if (empty($output)) {
-                echo "The API request was successful, but the response was empty.";
-            }
-        
-            // Optionally, decode JSON response
-            $decodedResponse = json_decode($output, true);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                echo "\n\nDecoded response:\n";
-                print_r($decodedResponse);
+
+            if($debug){
+                if (empty($output)) {
+                    echo "The API request was successful, but the response was empty.";
+                }
+            
+                // Optionally, decode JSON response
+                $decodedResponse = json_decode($output, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    echo "\n\nDecoded response:\n";
+                    print_r($decodedResponse);
+                }
             }
         
         } catch (Exception $e) {
